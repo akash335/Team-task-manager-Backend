@@ -166,19 +166,24 @@ app.post('/tasks', auth, async (req, res) => {
 app.put('/tasks/:id', auth, async (req, res) => {
   const id = Number(req.params.id);
   const { title, description, due, assignee_id, status } = req.body || {};
-  const { rows } = await pool.query(
-    `UPDATE tasks SET
-       title = COALESCE($1, title),
-       description = COALESCE($2, description),
-       due = COALESCE($3, due),
-       assignee_id = COALESCE($4, assignee_id),
-       status = COALESCE($5, status)
-     WHERE id = $6
-     RETURNING *`,
-    [title, description, due, assignee_id, status, id]
-  );
-  if (!rows.length) return res.status(404).json({ error: 'Task not found' });
-  res.json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      `UPDATE tasks SET
+         title = COALESCE($1, title),
+         description = COALESCE($2, description),
+         due = COALESCE($3, due),
+         assignee_id = COALESCE($4, assignee_id),
+         status = COALESCE($5, status)
+       WHERE id = $6
+       RETURNING *`,
+      [title, description, due, assignee_id, status, id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "Task not found" });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to update task" });
+  }
 });
 
 app.patch('/tasks/:id/status', auth, async (req, res) => {
