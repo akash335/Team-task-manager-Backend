@@ -1,28 +1,114 @@
-# Team Task Manager — Backend (Express + Postgres)
+# ⚙️ Team Task Manager — Backend (Express + PostgreSQL)
 
-Fast Express API with JWT auth and a simple task model on Postgres (Neon/Supabase).
+A secure and scalable **REST API backend** for Team Task Manager, built with **Node.js, Express, and PostgreSQL**, deployed on **Render**.  
+Handles authentication, task CRUD operations, and integrates with the React frontend hosted on **Vercel**.
 
-## Run locally
-```bash
-npm ci
-cp .env.example .env
-# Update .env (DATABASE_URL, JWT_SECRET, CORS_ORIGIN)
-npm start
-# Health: http://localhost:3000/health
-```
+---
 
-## Deploy on Render
-- **Service type:** Web Service (Node.js)
-- **Root Directory (monorepo):** `/` (if this repo alone) or `/Backend` if used from monorepo
-- **Build Command:** `npm ci` (or `npm install`)
-- **Start Command:** `node server.js`
-- **Node version:** 20 LTS
-- **Env Vars:**
-  - `PORT=10000` (Render sets this automatically, your code reads `process.env.PORT`)
-  - `HOST=0.0.0.0`
-  - `DATABASE_URL=postgresql://...?...sslmode=require`
-  - `JWT_SECRET=...`
-  - `CORS_ORIGIN=https://YOUR-FRONTEND.vercel.app`
-```
+## 🧩 Tech Stack
+- **Runtime:** Node.js (v22+)
+- **Framework:** Express.js  
+- **Database:** PostgreSQL (Render / Supabase)  
+- **Auth:** JWT (jsonwebtoken) + bcryptjs  
+- **Hosting:** Render  
+- **ORM:** Native SQL via `pg`  
 
-The server exposes `/register`, `/login`, `/tasks`, `/tasks/:id`, `/tasks/:id/status`.
+---
+
+## 🚀 Features
+- 🔐 User Authentication (Register / Login via JWT)
+- 🗂️ Create, read, update, and delete tasks
+- ✅ Mark tasks as **completed** or **pending**
+- 👥 Tasks linked to individual user accounts
+- 🌐 CORS support for secure frontend integration
+- 🪶 PostgreSQL schema auto-initialization
+- 🧩 API routes for health, auth, and tasks
+
+---
+
+## 🧪 Local Setup
+
+1. **Clone this repo**
+   ```bash
+   git clone https://github.com/akash335/Team-task-manager-Backend.git
+   cd team-task-manager-backend
+
+2. **Install dependencies**
+
+   npm install
+
+
+3. Create .env file
+
+PORT=3000
+JWT_SECRET=your-secret-key
+DATABASE_URL=postgresql://user:password@host:port/dbname
+CORS_ORIGIN=http://localhost:5173,https://your-frontend.vercel.app
+
+
+4. Run locally
+
+npm run dev
+
+
+5. Visit API health check
+
+http://localhost:3000/health
+
+## Environment Variables
+Variable	     Description
+--------       -----------
+PORT	         Port for local development
+JWT_SECRET	   Secret key for JWT signing
+DATABASE_URL	 PostgreSQL connection string
+CORS_ORIGIN	   Allowed frontend origins (comma-separated)
+HOST	         Host address (default: 0.0.0.0)
+
+## Folder Structure
+team-task-manager-backend/
+├── server.js
+├── package.json
+├── .env.example
+├── .gitignore
+├── README.md
+└── team.db (if using SQLite locally)
+
+## Deployment on Render
+
+1. Push your code to GitHub:
+
+git add .
+git commit -m "Deploy ready"
+git push origin main
+
+2. Go to Render
+ → Create New Web Service
+
+3. connect your GitHub repo
+
+4. Set these environment variables in Render dashboard:
+   PORT=10000
+   JWT_SECRET=your-production-secret
+   DATABASE_URL=your-render-postgres-url
+   CORS_ORIGIN=https://team-task-manager-frontend.vercel.app
+
+5. Build Command:
+
+npm install
+
+
+6. Start Command:
+
+npm run start
+
+
+7. Deploy 🎉
+
+🔗 Frontend Repo
+
+Frontend source: https://team-task-manager-frontend.vercel.app/
+
+🪶 Author
+
+Porumamilla_Akash — Full Stack Developer
+🔗 https://github.com/akash335/Team-task-manager-Backend
