@@ -8,18 +8,26 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',');
-const DATABASE_URL = process.env.DATABASE_URL;
 
-app.use(cors({
-  origin: CORS_ORIGIN,
-  credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
-}));
+// Allow both local frontend and deployed frontend (Render + Vercel)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://team-task-manager-frontend.vercel.app',
+  'https://team-task-manager-backend-ddwd.onrender.com'
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  })
+);
 app.options('*', cors());
 app.use(express.json());
 
+const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) console.warn('[WARN] DATABASE_URL is not set.');
 
 const pool = new Pool({
@@ -64,21 +72,33 @@ async function init() {
 init();
 
 function createToken(user) {
-  return jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(
+    { id: user.id, email: user.email, name: user.name },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 }
+
 function auth(req, res, next) {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Missing token' });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch { return res.status(401).json({ error: 'Invalid token' }); }
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
 }
 
-app.get('/health', (_,res) => res.status(200).send('ok'));
+app.get('/health', (_, res) => res.status(200).send('ok'));
 
-app.post('/register', async (req,res) => {
+// ===== USER AUTH =====
+app.post('/register', async (req, res) => {
   const { name, email, password } = req.body || {};
-  if (!name || !email || !password) return res.status(400).json({ error: 'name, email, password required' });
+  if (!name || !email || !password)
+    return res.status(400).json({ error: 'name, email, password required' });
+
   const hash = await bcrypt.hash(password, 10);
   try {
     const { rows } = await pool.query(
@@ -89,17 +109,21 @@ app.post('/register', async (req,res) => {
     const token = createToken(user);
     res.json({ user, token });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ error: 'Email already registered' });
+    if (e.code === '23505')
+      return res.status(409).json({ error: 'Email already registered' });
     console.error(e);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
 
-app.post('/login', async (req,res) => {
+app.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  if (!email || !password)
+    return res.status(400).json({ error: 'email and password required' });
   try {
-    const { rows } = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+    const { rows } = await pool.query('SELECT * FROM users WHERE email=$1', [
+      email
+    ]);
     const user = rows[0];
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
     const ok = await bcrypt.compare(password, user.password_hash);
@@ -112,7 +136,8 @@ app.post('/login', async (req,res) => {
   }
 });
 
-app.get('/tasks', auth, async (req,res) => {
+// ===== TASKS =====
+app.get('/tasks', auth, async (req, res) => {
   const uid = req.user.id;
   const { rows } = await pool.query(
     `SELECT t.*, a.name AS assignee_name, c.name AS creator_name
@@ -126,7 +151,7 @@ app.get('/tasks', auth, async (req,res) => {
   res.json(rows);
 });
 
-app.post('/tasks', auth, async (req,res) => {
+app.post('/tasks', auth, async (req, res) => {
   const { title, description, due, assignee_id } = req.body || {};
   if (!title) return res.status(400).json({ error: 'title required' });
   const uid = req.user.id;
@@ -138,7 +163,7 @@ app.post('/tasks', auth, async (req,res) => {
   res.json(rows[0]);
 });
 
-app.put('/tasks/:id', auth, async (req,res) => {
+app.put('/tasks/:id', auth, async (req, res) => {
   const id = Number(req.params.id);
   const { title, description, due, assignee_id, status } = req.body || {};
   const { rows } = await pool.query(
@@ -156,20 +181,26 @@ app.put('/tasks/:id', auth, async (req,res) => {
   res.json(rows[0]);
 });
 
-app.patch('/tasks/:id/status', auth, async (req,res) => {
+app.patch('/tasks/:id/status', auth, async (req, res) => {
   const id = Number(req.params.id);
   const { status } = req.body || {};
   if (!status) return res.status(400).json({ error: 'status required' });
-  const { rows } = await pool.query(`UPDATE tasks SET status=$1 WHERE id=$2 RETURNING *`, [status, id]);
+  const { rows } = await pool.query(
+    `UPDATE tasks SET status=$1 WHERE id=$2 RETURNING *`,
+    [status, id]
+  );
   if (!rows.length) return res.status(404).json({ error: 'Task not found' });
   res.json(rows[0]);
 });
 
-app.delete('/tasks/:id', auth, async (req,res) => {
+app.delete('/tasks/:id', auth, async (req, res) => {
   const id = Number(req.params.id);
   const r = await pool.query('DELETE FROM tasks WHERE id=$1', [id]);
   res.json({ ok: true, deleted: r.rowCount });
 });
 
+// ===== START SERVER =====
 const host = process.env.HOST || '0.0.0.0';
-app.listen(PORT, host, () => console.log(`Server on http://${host}:${PORT}`));
+app.listen(PORT, host, () =>
+  console.log(`Server running on http://${host}:${PORT}`)
+);
